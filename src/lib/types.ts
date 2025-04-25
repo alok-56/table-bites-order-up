@@ -42,3 +42,16 @@ export interface Order {
   createdAt: string;
   notes?: string;
 }
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'kitchen';
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
