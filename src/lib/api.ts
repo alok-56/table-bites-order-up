@@ -1,4 +1,3 @@
-
 import { ApiResponse, Category, MenuItem, Order, Table, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -42,10 +41,18 @@ const authFetch = async <T>(
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> => {
-    return authFetch('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Login failed' };
+    }
   },
   
   register: async (userData: { 
@@ -68,21 +75,52 @@ export const authAPI = {
 // Tables API
 export const tablesAPI = {
   getAllTables: async (): Promise<ApiResponse<Table[]>> => {
-    return authFetch('/tables');
+    try {
+      const response = await fetch(`${API_URL}/tables`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return { success: true, data: data.data };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to fetch tables' };
+    }
+  },
+
+  createTable: async (tableData: { number: number; seats: number }): Promise<ApiResponse<Table>> => {
+    try {
+      const response = await fetch(`${API_URL}/tables`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(tableData),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return { success: true, data: data.data };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to create table' };
+    }
+  },
+
+  regenerateQRCode: async (id: string): Promise<ApiResponse<Table>> => {
+    try {
+      const response = await fetch(`${API_URL}/tables/${id}/qrcode`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+      return { success: true, data: data.data };
+    } catch (error) {
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to regenerate QR code' };
+    }
   },
   
   getTable: async (id: string): Promise<ApiResponse<Table>> => {
     return authFetch(`/tables/${id}`);
-  },
-  
-  createTable: async (tableData: { 
-    number: number; 
-    seats: number;
-  }): Promise<ApiResponse<Table>> => {
-    return authFetch('/tables', {
-      method: 'POST',
-      body: JSON.stringify(tableData),
-    });
   },
   
   updateTable: async (id: string, tableData: Partial<Table>): Promise<ApiResponse<Table>> => {
@@ -95,12 +133,6 @@ export const tablesAPI = {
   deleteTable: async (id: string): Promise<ApiResponse<{}>> => {
     return authFetch(`/tables/${id}`, {
       method: 'DELETE',
-    });
-  },
-  
-  regenerateQRCode: async (id: string): Promise<ApiResponse<Table>> => {
-    return authFetch(`/tables/${id}/qrcode`, {
-      method: 'POST',
     });
   },
 };

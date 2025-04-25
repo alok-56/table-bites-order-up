@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,40 +11,139 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { tables as initialTables } from "@/lib/sample-data";
 import { Table as TableType } from "@/lib/types";
 import { QrCode, Plus, Download } from "lucide-react";
 import { toast } from "sonner";
+import { tablesAPI } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+
+const AddTableDialog = ({ onSuccess }: { onSuccess: () => void }) => {
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    defaultValues: {
+      number: '',
+      seats: ''
+    }
+  });
+
+  const onSubmit = async (data: any) => {
+    const response = await tablesAPI.createTable({
+      number: parseInt(data.number),
+      seats: parseInt(data.seats)
+    });
+
+    if (response.success) {
+      toast.success("Table created successfully");
+      onSuccess();
+    } else {
+      toast.error(response.message || "Failed to create table");
+    }
+  };
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Add New Table</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Table Number</label>
+          <Input
+            type="number"
+            {...register("number", { required: "Table number is required" })}
+          />
+          {errors.number && (
+            <p className="text-sm text-red-500">{errors.number.message}</p>
+          )}
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium">Number of Seats</label>
+          <Input
+            type="number"
+            {...register("seats", { required: "Number of seats is required" })}
+          />
+          {errors.seats && (
+            <p className="text-sm text-red-500">{errors.seats.message}</p>
+          )}
+        </div>
+        
+        <Button type="submit" className="w-full bg-orange-500 hover:bg-orange-600">
+          Create Table
+        </Button>
+      </form>
+    </DialogContent>
+  );
+};
 
 const AdminTables = () => {
-  const [tables, setTables] = useState<TableType[]>(initialTables);
+  const [tables, setTables] = useState<TableType[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleGenerateQR = (tableId: string) => {
-    // In a real app, this would generate a new QR code
-    // For now, just show a toast
-    toast.success("QR code regenerated");
+  const fetchTables = async () => {
+    setLoading(true);
+    const response = await tablesAPI.getAllTables();
+    if (response.success && response.data) {
+      setTables(response.data);
+    } else {
+      toast.error(response.message || "Failed to fetch tables");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTables();
+  }, []);
+
+  const handleGenerateQR = async (tableId: string) => {
+    const response = await tablesAPI.regenerateQRCode(tableId);
+    if (response.success) {
+      toast.success("QR code regenerated successfully");
+      fetchTables(); // Refresh table data
+    } else {
+      toast.error(response.message || "Failed to regenerate QR code");
+    }
   };
   
-  const handleDownloadQR = (tableId: string, tableNumber: number) => {
-    // In a real app, this would trigger a download of the QR code
+  const handleDownloadQR = (qrCode: string, tableNumber: number) => {
+    // Create a temporary link to download the QR code
+    const link = document.createElement('a');
+    link.href = qrCode;
+    link.download = `table-${tableNumber}-qr.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     toast.success(`QR code for Table #${tableNumber} downloaded`);
   };
   
   return (
     <AdminLayout title="Tables & QR Codes">
       <div className="mb-6 flex justify-end">
-        <Button className="bg-orange-500 hover:bg-orange-600">
-          <Plus className="mr-1 h-4 w-4" />
-          Add New Table
-        </Button>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-orange-500 hover:bg-orange-600">
+              <Plus className="mr-1 h-4 w-4" />
+              Add New Table
+            </Button>
+          </DialogTrigger>
+          <AddTableDialog onSuccess={fetchTables} />
+        </Dialog>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {tables.map((table) => (
-          <div key={table.id} className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <div key={table.id} className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in">
             <div className="p-6 flex items-center justify-center border-b">
               <div className="bg-gray-100 p-6 rounded-lg">
-                <QrCode className="h-24 w-24 text-gray-800" />
+                {table.qrCode ? (
+                  <img 
+                    src={table.qrCode} 
+                    alt={`QR Code for Table ${table.number}`}
+                    className="h-24 w-24"
+                  />
+                ) : (
+                  <QrCode className="h-24 w-24 text-gray-800" />
+                )}
               </div>
             </div>
             
@@ -67,7 +166,8 @@ const AdminTables = () => {
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => handleDownloadQR(table.id, table.number)}
+                  onClick={() => handleDownloadQR(table.qrCode, table.number)}
+                  disabled={!table.qrCode}
                 >
                   <Download className="mr-1 h-4 w-4" />
                   Download

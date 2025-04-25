@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,41 +14,45 @@ import Cart from "./pages/customer/Cart";
 import OrderConfirmation from "./pages/customer/OrderConfirmation";
 import Kitchen from "./pages/kitchen/Kitchen";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/auth/Login";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <CartProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<Home />} />
-            
-            {/* Customer routes */}
-            <Route path="/table/:tableId" element={<CustomerMenu />} />
-            <Route path="/table/:tableId/cart" element={<Cart />} />
-            <Route path="/table/:tableId/confirmation" element={<OrderConfirmation />} />
-            
-            {/* Admin routes */}
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/menu" element={<AdminMenu />} />
-            <Route path="/admin/tables" element={<AdminTables />} />
-            <Route path="/admin/orders" element={<AdminOrders />} />
-            
-            {/* Kitchen route */}
-            <Route path="/kitchen" element={<Kitchen />} />
-            
-            {/* Catch-all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </CartProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <CartProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              
+              {/* Customer routes */}
+              <Route path="/table/:tableId" element={<CustomerMenu />} />
+              <Route path="/table/:tableId/cart" element={<Cart />} />
+              <Route path="/table/:tableId/confirmation" element={<OrderConfirmation />} />
+              
+              {/* Protected routes - these should check for auth */}
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/menu" element={<AdminMenu />} />
+              <Route path="/admin/tables" element={<AdminTables />} />
+              <Route path="/admin/orders" element={<AdminOrders />} />
+              
+              {/* Kitchen route */}
+              <Route path="/kitchen" element={<Kitchen />} />
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </CartProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
