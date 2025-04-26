@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./contexts/CartContext";
 import Home from "./pages/Home";
+import AdminLogin from "./pages/auth/AdminLogin";
+import KitchenLogin from "./pages/auth/KitchenLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMenu from "./pages/admin/AdminMenu";
 import AdminTables from "./pages/admin/AdminTables";
@@ -14,7 +17,6 @@ import Cart from "./pages/customer/Cart";
 import OrderConfirmation from "./pages/customer/OrderConfirmation";
 import Kitchen from "./pages/kitchen/Kitchen";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/auth/Login";
 
 const queryClient = new QueryClient();
 
@@ -29,7 +31,8 @@ const App = () => {
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/kitchen/login" element={<KitchenLogin />} />
               
               {/* Customer routes */}
               <Route path="/table/:tableId" element={<CustomerMenu />} />
