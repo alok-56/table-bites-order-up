@@ -1,6 +1,6 @@
 import { ApiResponse, Category, MenuItem, Order, Table, User } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:6000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 // Helper function for making authenticated requests
 const authFetch = async <T>(

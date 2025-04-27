@@ -17,6 +17,7 @@ const AdminLogin = () => {
     e.preventDefault();
     
     const response = await authAPI.login(email, password);
+    console.log(response)
     
     if (response.success && response.data) {
       const { token, user } = response.data;
