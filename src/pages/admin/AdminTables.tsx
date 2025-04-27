@@ -1,45 +1,59 @@
-
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { Table as TableType } from "@/lib/types";
 import { QrCode, Plus, Download, Edit, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { tablesAPI } from "@/lib/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { QRCodeSVG } from "qrcode.react";
 
 // TableForm component for both adding and editing tables
-const TableForm = ({ 
-  onSuccess, 
-  tableData = null
-}: { 
-  onSuccess: () => void, 
-  tableData?: TableType | null
+const TableForm = ({
+  onSuccess,
+  tableData = null,
+}: {
+  onSuccess: () => void;
+  tableData?: TableType | null;
 }) => {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm({
     defaultValues: {
-      number: tableData ? String(tableData.number) : '',
-      seats: tableData ? String(tableData.seats) : '',
-      status: tableData ? tableData.status : 'available'
-    }
+      number: tableData ? String(tableData.number) : "",
+      seats: tableData ? String(tableData.seats) : "",
+      status: tableData ? tableData.status : "available",
+    },
   });
 
   const queryClient = useQueryClient();
 
   const { mutate: saveTable, isPending } = useMutation({
-    mutationFn: async (data: { number: number; seats: number; status?: string }) => {
+    mutationFn: async (data: {
+      number: number;
+      seats: number;
+      status?: string;
+    }) => {
       if (tableData) {
         return tablesAPI.updateTable(tableData._id, data);
       } else {
@@ -48,9 +62,13 @@ const TableForm = ({
     },
     onSuccess: (response) => {
       if (response.success) {
-        toast.success(tableData ? "Table updated successfully" : "Table created successfully");
+        toast.success(
+          tableData
+            ? "Table updated successfully"
+            : "Table created successfully"
+        );
         reset();
-        queryClient.invalidateQueries({ queryKey: ['tables'] });
+        queryClient.invalidateQueries({ queryKey: ["tables"] });
         onSuccess();
       } else {
         toast.error(response.message || "Failed to save table");
@@ -58,14 +76,14 @@ const TableForm = ({
     },
     onError: (error: any) => {
       toast.error(error.message || "Failed to save table");
-    }
+    },
   });
 
   const onSubmit = (data: any) => {
     saveTable({
       number: parseInt(data.number),
       seats: parseInt(data.seats),
-      status: data.status
+      status: data.status,
     });
   };
 
@@ -81,7 +99,7 @@ const TableForm = ({
           <p className="text-sm text-red-500">{errors.number.message}</p>
         )}
       </div>
-      
+
       <div>
         <label className="text-sm font-medium">Number of Seats</label>
         <Input
@@ -92,12 +110,12 @@ const TableForm = ({
           <p className="text-sm text-red-500">{errors.seats.message}</p>
         )}
       </div>
-      
+
       {tableData && (
         <div>
           <label className="text-sm font-medium">Status</label>
-          <select 
-            {...register("status")} 
+          <select
+            {...register("status")}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="available">Available</option>
@@ -105,13 +123,19 @@ const TableForm = ({
           </select>
         </div>
       )}
-      
-      <Button 
-        type="submit" 
+
+      <Button
+        type="submit"
         className="w-full bg-orange-500 hover:bg-orange-600"
         disabled={isPending}
       >
-        {isPending ? (tableData ? "Updating..." : "Creating...") : (tableData ? "Update Table" : "Create Table")}
+        {isPending
+          ? tableData
+            ? "Updating..."
+            : "Creating..."
+          : tableData
+          ? "Update Table"
+          : "Create Table"}
       </Button>
     </form>
   );
@@ -122,52 +146,66 @@ const AdminTables = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState<TableType | null>(null);
   const queryClient = useQueryClient();
-  const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+  const frontendUrl =
+    import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
-  const { 
-    data: tables = [], 
-    isLoading, 
+  const {
+    data: tables = [],
+    isLoading,
     error,
-    refetch
+    refetch,
   } = useQuery({
-    queryKey: ['tables'],
+    queryKey: ["tables"],
     queryFn: async () => {
       const response = await tablesAPI.getAllTables();
       if (!response.success) {
         throw new Error(response.message);
       }
       return response.data;
-    }
+    },
   });
 
   const handleEdit = (table: TableType) => {
     setSelectedTable(table);
     setIsEditDialogOpen(true);
   };
-  
-  const handleDownloadQR = (tableId: string, tableNumber: number) => {
-    const qrCanvas = document.getElementById(`qr-code-${tableId}`);
-    if (qrCanvas) {
-      const canvas = qrCanvas.querySelector('canvas');
-      if (canvas) {
-        const link = document.createElement('a');
-        link.download = `table-${tableNumber}-qr.png`;
-        link.href = canvas.toDataURL('image/png');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(`QR code for Table #${tableNumber} downloaded`);
+
+  const qrCodeRefs = useRef<any>({}); // Ref to hold references to all QRCodeSVG elements
+
+  const handleDownloadQR = async (tableId: string, tableNumber: number) => {
+    try {
+      // Access the QR code reference
+      const qrCodeElement = qrCodeRefs.current[tableId];
+      if (!qrCodeElement) {
+        toast.error("QR code not found.");
+        return;
       }
+
+      // Generate the Data URL from the ref element
+      const qrCodeDataUrl = qrCodeElement.toDataURL();
+
+      // Create an anchor element to trigger the download
+      const link = document.createElement("a");
+      link.download = `table-${tableNumber}-qr.png`; // Set the download filename
+      link.href = qrCodeDataUrl; // Use the generated Data URL as the href
+      document.body.appendChild(link);
+      link.click(); // Simulate a click to download the file
+      document.body.removeChild(link); // Clean up the DOM
+      toast.success(`QR code for Table #${tableNumber} downloaded`);
+    } catch (error) {
+      toast.error("Failed to generate or download QR code.");
     }
   };
-  
+
   if (error) {
     return (
       <AdminLayout title="Tables & QR Codes">
         <div className="text-center py-8">
-          <p className="text-red-500">Error loading tables. Please try again.</p>
-          <button 
-            onClick={() => refetch()} 
+          <p className="text-red-500">
+            Error loading tables. Please try again.
+          </p>
+          <button
+            onClick={() => refetch()}
             className="mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
           >
             Retry
@@ -176,7 +214,7 @@ const AdminTables = () => {
       </AdminLayout>
     );
   }
-  
+
   return (
     <AdminLayout title="Tables & QR Codes">
       <div className="mb-6 flex justify-end">
@@ -195,7 +233,7 @@ const AdminTables = () => {
           </DialogContent>
         </Dialog>
       </div>
-      
+
       {/* Edit Table Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
@@ -203,17 +241,17 @@ const AdminTables = () => {
             <DialogTitle>Edit Table</DialogTitle>
           </DialogHeader>
           {selectedTable && (
-            <TableForm 
-              tableData={selectedTable} 
+            <TableForm
+              tableData={selectedTable}
               onSuccess={() => {
                 setIsEditDialogOpen(false);
                 setSelectedTable(null);
-              }} 
+              }}
             />
           )}
         </DialogContent>
       </Dialog>
-      
+
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
@@ -222,21 +260,34 @@ const AdminTables = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {tables.map((table) => (
-              <div key={table.id} className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in">
+              <div
+                key={table.id}
+                className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in"
+              >
                 <div className="p-6 flex items-center justify-center border-b">
-                  <div id={`qr-code-${table.id}`} className="bg-gray-100 p-6 rounded-lg">
-                    <QRCodeSVG 
-                      value={`${frontendUrl}/table/${table.id}`}
+                  <div
+                    id={`qr-code-${table.id}`}
+                    className="bg-gray-100 p-6 rounded-lg"
+                  >
+                    <QRCodeSVG
+                      value={`${frontendUrl}/table/${table._id}`}
                       size={128}
                       level="H"
+                      ref={(el) => {
+                        qrCodeRefs.current[table.id] = el;
+                      }}
                     />
                   </div>
                 </div>
-                
+
                 <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-1">Table #{table.number}</h3>
-                  <p className="text-sm text-gray-600 mb-4">Seats: {table.seats}</p>
-                  
+                  <h3 className="font-semibold text-lg mb-1">
+                    Table #{table.number}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Seats: {table.seats}
+                  </p>
+
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -247,12 +298,12 @@ const AdminTables = () => {
                       <Pencil className="mr-1 h-4 w-4" />
                       Edit
                     </Button>
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDownloadQR(table.id, table.number)}
+                      onClick={() => handleDownloadQR(table._id, table.number)}
                     >
                       <Download className="mr-1 h-4 w-4" />
                       Download QR
@@ -262,10 +313,10 @@ const AdminTables = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="bg-white rounded-lg border shadow-sm p-6">
             <h3 className="font-semibold text-lg mb-4">Table List</h3>
-            
+
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
@@ -280,18 +331,26 @@ const AdminTables = () => {
                   {tables.length > 0 ? (
                     tables.map((table) => (
                       <TableRow key={table.id}>
-                        <TableCell className="font-medium">#{table.number}</TableCell>
+                        <TableCell className="font-medium">
+                          #{table.number}
+                        </TableCell>
                         <TableCell>{table.seats}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            table.status === 'occupied' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'
-                          }`}>
-                            {table.status === 'occupied' ? 'Occupied' : 'Available'}
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              table.status === "occupied"
+                                ? "bg-orange-100 text-orange-800"
+                                : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {table.status === "occupied"
+                              ? "Occupied"
+                              : "Available"}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(table)}
                           >
@@ -303,7 +362,10 @@ const AdminTables = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                      <TableCell
+                        colSpan={4}
+                        className="text-center py-8 text-gray-500"
+                      >
                         No tables found
                       </TableCell>
                     </TableRow>
