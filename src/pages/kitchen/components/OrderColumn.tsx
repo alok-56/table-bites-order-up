@@ -1,15 +1,14 @@
 
-import { Order } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Order } from "@/lib/types";
 
 interface OrderColumnProps {
   title: string;
   orders: Order[];
   variant: 'default' | 'orange' | 'blue' | 'green';
   onUpdateStatus: (orderId: string) => void;
-  nextStatus: Order['status'];
+  nextStatus: string;
   buttonText: string;
   isLoading?: boolean;
 }
@@ -20,91 +19,112 @@ const OrderColumn = ({
   variant, 
   onUpdateStatus, 
   nextStatus, 
-  buttonText,
-  isLoading = false
+  buttonText, 
+  isLoading = false 
 }: OrderColumnProps) => {
-  const getVariantStyles = () => {
-    const styles = {
-      default: {
-        header: 'bg-gray-100',
-        badge: 'bg-gray-200',
-        button: ''
-      },
-      orange: {
-        header: 'bg-orange-50 border-orange-200',
-        badge: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
-        button: 'bg-orange-500 hover:bg-orange-600'
-      },
-      blue: {
-        header: 'bg-blue-50 border-blue-200',
-        badge: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-        button: 'border-blue-500 text-blue-700 hover:bg-blue-50'
-      },
-      green: {
-        header: 'bg-green-50 border-green-200',
-        badge: 'bg-green-100 text-green-700 hover:bg-green-100',
-        button: 'bg-green-500 hover:bg-green-600'
-      }
-    };
-    return styles[variant];
+  // Get header color based on variant
+  const getHeaderClass = () => {
+    switch (variant) {
+      case 'orange':
+        return 'bg-orange-50 border-orange-200';
+      case 'blue':
+        return 'bg-blue-50 border-blue-200';
+      case 'green':
+        return 'bg-green-50 border-green-200';
+      default:
+        return 'bg-gray-50 border-gray-200';
+    }
   };
-
-  const styles = getVariantStyles();
-
+  
+  // Get button color based on variant
+  const getButtonClass = () => {
+    switch (variant) {
+      case 'orange':
+        return 'bg-orange-500 hover:bg-orange-600';
+      case 'blue':
+        return 'bg-blue-500 hover:bg-blue-600';
+      case 'green':
+        return 'bg-green-500 hover:bg-green-600';
+      default:
+        return 'bg-gray-500 hover:bg-gray-600';
+    }
+  };
+  
+  // Format time (relative to now)
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+    
+    if (diffMins < 1) {
+      return 'Just now';
+    } else if (diffMins === 1) {
+      return '1 minute ago';
+    } else if (diffMins < 60) {
+      return `${diffMins} minutes ago`;
+    } else {
+      const hours = Math.floor(diffMins / 60);
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    }
+  };
+  
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      <div className={`${styles.header} px-4 py-2 border-b`}>
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">{title}</h2>
-          <Badge className={styles.badge}>
-            {orders.length}
-          </Badge>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className={`p-4 rounded-t-lg border-b ${getHeaderClass()}`}>
+        <h3 className="font-semibold">{title}</h3>
+        <div className="text-sm text-gray-500">{orders.length} orders</div>
       </div>
       
-      <div className="p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
+      <div className="flex-1 overflow-y-auto max-h-[calc(100vh-240px)]">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full py-10">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-500"></div>
           </div>
         ) : orders.length > 0 ? (
-          orders.map((order) => (
-            <div key={order.id} className="bg-white border rounded p-3">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">Table #{order.tableNumber}</span>
-                <span className="text-xs text-gray-500">
-                  {new Date(order.createdAt).toLocaleTimeString()}
-                </span>
-              </div>
-              
-              <div className="text-sm text-gray-600 mb-3 max-h-36 overflow-y-auto">
-                {order.items.map((item) => (
-                  <div key={item.menuItemId} className="flex justify-between mb-1">
-                    <span>{item.quantity}x {item.name}</span>
-                    <span className="text-gray-500">${(item.price * item.quantity).toFixed(2)}</span>
+          <div className="space-y-4 p-4">
+            {orders.map((order) => (
+              <Card key={order.id} className="shadow-sm">
+                <CardHeader className="p-4 pb-2">
+                  <div className="flex justify-between">
+                    <CardTitle className="text-lg">Table #{order.tableNumber}</CardTitle>
+                    <span className="text-sm text-gray-500">{formatTime(order.createdAt)}</span>
                   </div>
-                ))}
-                {order.notes && (
-                  <div className="mt-2 pt-2 border-t text-xs italic text-gray-500">
-                    Note: {order.notes}
-                  </div>
-                )}
-              </div>
-              
-              <Button
-                onClick={() => onUpdateStatus(order.id)}
-                className={`w-full ${styles.button}`}
-                size="sm"
-                variant={variant === 'blue' ? 'outline' : 'default'}
-              >
-                {variant === 'blue' && <Check className="mr-1 h-4 w-4" />}
-                {buttonText}
-              </Button>
-            </div>
-          ))
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <ul className="mb-4 space-y-2">
+                    {order.items.map((item, idx) => (
+                      <li key={idx} className="flex justify-between">
+                        <div>
+                          <span className="font-medium">{item.quantity}x</span> {item.name}
+                          {item.specialInstructions && (
+                            <p className="text-xs text-gray-500">Note: {item.specialInstructions}</p>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  {order.notes && (
+                    <div className="mb-4 p-2 bg-gray-50 rounded text-sm">
+                      <p className="font-medium">Order Notes:</p>
+                      <p className="text-gray-700">{order.notes}</p>
+                    </div>
+                  )}
+                  
+                  <Button 
+                    className={`w-full ${getButtonClass()}`}
+                    onClick={() => onUpdateStatus(order.id)}
+                  >
+                    {buttonText}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
-          <div className="flex items-center justify-center h-full py-10 text-gray-500 italic">
-            No {title.toLowerCase()} orders
+          <div className="text-center p-8 text-gray-500">
+            No orders in this status
           </div>
         )}
       </div>

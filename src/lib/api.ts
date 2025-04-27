@@ -1,57 +1,51 @@
+
+import axios from 'axios';
 import { ApiResponse, Category, MenuItem, Order, Table, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-// Helper function for making authenticated requests
-const authFetch = async <T>(
-  endpoint: string, 
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> => {
-  // Get token from local storage
-  const token = localStorage.getItem('token');
-  
-  // Set headers with authentication token
-  const headers = {
+// Create axios instance
+const api = axios.create({
+  baseURL: API_URL,
+  headers: {
     'Content-Type': 'application/json',
-    ...options.headers,
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-  
-  try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+  },
+});
+
+// Add request interceptor for auth
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      return { success: false, message: error.message };
-    }
-    return { success: false, message: 'Unknown error occurred' };
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => {
+    return { 
+      success: true, 
+      data: response.data.data || response.data 
+    };
+  },
+  (error) => {
+    const message = error.response?.data?.message || error.message || 'An error occurred';
+    return { success: false, message };
   }
-};
+);
 
 // Auth API
 export const authAPI = {
   login: async (email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> => {
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      return { success: true, data };
+      const response = await api.post('/auth/login', { email, password });
+      return response as ApiResponse<{ token: string; user: User }>;
     } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Login failed' };
+      return { success: false, message: 'Login failed' };
     }
   },
   
@@ -61,79 +55,38 @@ export const authAPI = {
     password: string; 
     role: string;
   }): Promise<ApiResponse<{ token: string; user: User }>> => {
-    return authFetch('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+    return api.post('/auth/register', userData);
   },
   
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
-    return authFetch('/auth/me');
+    return api.get('/auth/me');
   },
 };
 
 // Tables API
 export const tablesAPI = {
   getAllTables: async (): Promise<ApiResponse<Table[]>> => {
-    try {
-      const response = await fetch(`${API_URL}/tables`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      return { success: true, data: data.data };
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Failed to fetch tables' };
-    }
+    return api.get('/tables');
   },
 
   createTable: async (tableData: { number: number; seats: number }): Promise<ApiResponse<Table>> => {
-    try {
-      const response = await fetch(`${API_URL}/tables`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(tableData),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      return { success: true, data: data.data };
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Failed to create table' };
-    }
+    return api.post('/tables', tableData);
   },
 
   regenerateQRCode: async (id: string): Promise<ApiResponse<Table>> => {
-    try {
-      const response = await fetch(`${API_URL}/tables/${id}/qrcode`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message);
-      return { success: true, data: data.data };
-    } catch (error) {
-      return { success: false, message: error instanceof Error ? error.message : 'Failed to regenerate QR code' };
-    }
+    return api.post(`/tables/${id}/qrcode`);
   },
   
   getTable: async (id: string): Promise<ApiResponse<Table>> => {
-    return authFetch(`/tables/${id}`);
+    return api.get(`/tables/${id}`);
   },
   
   updateTable: async (id: string, tableData: Partial<Table>): Promise<ApiResponse<Table>> => {
-    return authFetch(`/tables/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(tableData),
-    });
+    return api.put(`/tables/${id}`, tableData);
   },
   
   deleteTable: async (id: string): Promise<ApiResponse<{}>> => {
-    return authFetch(`/tables/${id}`, {
-      method: 'DELETE',
-    });
+    return api.delete(`/tables/${id}`);
   },
 };
 
@@ -141,29 +94,24 @@ export const tablesAPI = {
 export const menuAPI = {
   // Categories
   getCategories: async (): Promise<ApiResponse<Category[]>> => {
-    return authFetch('/menu/categories');
+    return api.get('/menu/categories');
   },
   
   createCategory: async (name: string): Promise<ApiResponse<Category>> => {
-    return authFetch('/menu/categories', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
+    return api.post('/menu/categories', { name });
   },
   
   deleteCategory: async (id: string): Promise<ApiResponse<{}>> => {
-    return authFetch(`/menu/categories/${id}`, {
-      method: 'DELETE',
-    });
+    return api.delete(`/menu/categories/${id}`);
   },
   
   // Menu Items
   getMenuItems: async (): Promise<ApiResponse<MenuItem[]>> => {
-    return authFetch('/menu/items');
+    return api.get('/menu/items');
   },
   
   getMenuItem: async (id: string): Promise<ApiResponse<MenuItem>> => {
-    return authFetch(`/menu/items/${id}`);
+    return api.get(`/menu/items/${id}`);
   },
   
   createMenuItem: async (itemData: {
@@ -174,34 +122,26 @@ export const menuAPI = {
     category: string;
     available?: boolean;
   }): Promise<ApiResponse<MenuItem>> => {
-    return authFetch('/menu/items', {
-      method: 'POST',
-      body: JSON.stringify(itemData),
-    });
+    return api.post('/menu/items', itemData);
   },
   
   updateMenuItem: async (id: string, itemData: Partial<MenuItem>): Promise<ApiResponse<MenuItem>> => {
-    return authFetch(`/menu/items/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(itemData),
-    });
+    return api.put(`/menu/items/${id}`, itemData);
   },
   
   deleteMenuItem: async (id: string): Promise<ApiResponse<{}>> => {
-    return authFetch(`/menu/items/${id}`, {
-      method: 'DELETE',
-    });
+    return api.delete(`/menu/items/${id}`);
   },
 };
 
 // Orders API
 export const ordersAPI = {
   getAllOrders: async (): Promise<ApiResponse<Order[]>> => {
-    return authFetch('/orders');
+    return api.get('/orders');
   },
   
   getOrder: async (id: string): Promise<ApiResponse<Order>> => {
-    return authFetch(`/orders/${id}`);
+    return api.get(`/orders/${id}`);
   },
   
   createOrder: async (orderData: {
@@ -213,24 +153,18 @@ export const ordersAPI = {
     }[];
     notes?: string;
   }): Promise<ApiResponse<Order>> => {
-    return authFetch('/orders', {
-      method: 'POST',
-      body: JSON.stringify(orderData),
-    });
+    return api.post('/orders', orderData);
   },
   
   updateOrder: async (id: string, status: Order['status']): Promise<ApiResponse<Order>> => {
-    return authFetch(`/orders/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
+    return api.put(`/orders/${id}`, { status });
   },
   
   getOrdersByTable: async (tableId: string): Promise<ApiResponse<Order[]>> => {
-    return authFetch(`/orders/table/${tableId}`);
+    return api.get(`/orders/table/${tableId}`);
   },
   
   getOrdersByStatus: async (status: Order['status']): Promise<ApiResponse<Order[]>> => {
-    return authFetch(`/orders/status/${status}`);
+    return api.get(`/orders/status/${status}`);
   },
 };
