@@ -41,7 +41,7 @@ const TableForm = ({
   const { mutate: saveTable, isPending } = useMutation({
     mutationFn: async (data: { number: number; seats: number; status?: string }) => {
       if (tableData) {
-        return tablesAPI.updateTable(tableData.id, data);
+        return tablesAPI.updateTable(tableData._id, data);
       } else {
         return tablesAPI.createTable(data);
       }
