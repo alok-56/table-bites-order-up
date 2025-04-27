@@ -1,11 +1,11 @@
+
 const express = require('express');
 const { 
   getTables,
   createTable, 
   getTable, 
   updateTable, 
-  deleteTable,
-  regenerateQRCode
+  deleteTable
 } = require('../controllers/tableController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -23,7 +23,5 @@ router.route('/:id')
   .get(getTable)
   .put(authorize('admin'), updateTable)
   .delete(authorize('admin'), deleteTable);
-
-router.post('/:id/qrcode', authorize('admin'), regenerateQRCode);
 
 module.exports = router;

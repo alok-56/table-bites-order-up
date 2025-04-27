@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,92 +12,117 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Table as TableType } from "@/lib/types";
-import { QrCode, Plus, Download } from "lucide-react";
+import { QrCode, Plus, Download, Edit, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { tablesAPI } from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { QRCodeSVG } from "qrcode.react";
 
-const AddTableDialog = ({ onSuccess }: { onSuccess: () => void }) => {
+// TableForm component for both adding and editing tables
+const TableForm = ({ 
+  onSuccess, 
+  tableData = null
+}: { 
+  onSuccess: () => void, 
+  tableData?: TableType | null
+}) => {
   const { register, handleSubmit, formState: { errors }, reset } = useForm({
     defaultValues: {
-      number: '',
-      seats: ''
+      number: tableData ? String(tableData.number) : '',
+      seats: tableData ? String(tableData.seats) : '',
+      status: tableData ? tableData.status : 'available'
     }
   });
 
   const queryClient = useQueryClient();
 
-  const { mutate: createTable, isPending } = useMutation({
-    mutationFn: async (data: { number: number; seats: number }) => {
-      return tablesAPI.createTable(data);
+  const { mutate: saveTable, isPending } = useMutation({
+    mutationFn: async (data: { number: number; seats: number; status?: string }) => {
+      if (tableData) {
+        return tablesAPI.updateTable(tableData.id, data);
+      } else {
+        return tablesAPI.createTable(data);
+      }
     },
     onSuccess: (response) => {
       if (response.success) {
-        toast.success("Table created successfully");
+        toast.success(tableData ? "Table updated successfully" : "Table created successfully");
         reset();
         queryClient.invalidateQueries({ queryKey: ['tables'] });
         onSuccess();
       } else {
-        toast.error(response.message || "Failed to create table");
+        toast.error(response.message || "Failed to save table");
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to create table");
+      toast.error(error.message || "Failed to save table");
     }
   });
 
   const onSubmit = (data: any) => {
-    createTable({
+    saveTable({
       number: parseInt(data.number),
-      seats: parseInt(data.seats)
+      seats: parseInt(data.seats),
+      status: data.status
     });
   };
 
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Add New Table</DialogTitle>
-      </DialogHeader>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Table Number</label>
+        <Input
+          type="number"
+          {...register("number", { required: "Table number is required" })}
+        />
+        {errors.number && (
+          <p className="text-sm text-red-500">{errors.number.message}</p>
+        )}
+      </div>
+      
+      <div>
+        <label className="text-sm font-medium">Number of Seats</label>
+        <Input
+          type="number"
+          {...register("seats", { required: "Number of seats is required" })}
+        />
+        {errors.seats && (
+          <p className="text-sm text-red-500">{errors.seats.message}</p>
+        )}
+      </div>
+      
+      {tableData && (
         <div>
-          <label className="text-sm font-medium">Table Number</label>
-          <Input
-            type="number"
-            {...register("number", { required: "Table number is required" })}
-          />
-          {errors.number && (
-            <p className="text-sm text-red-500">{errors.number.message}</p>
-          )}
+          <label className="text-sm font-medium">Status</label>
+          <select 
+            {...register("status")} 
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+          </select>
         </div>
-        
-        <div>
-          <label className="text-sm font-medium">Number of Seats</label>
-          <Input
-            type="number"
-            {...register("seats", { required: "Number of seats is required" })}
-          />
-          {errors.seats && (
-            <p className="text-sm text-red-500">{errors.seats.message}</p>
-          )}
-        </div>
-        
-        <Button 
-          type="submit" 
-          className="w-full bg-orange-500 hover:bg-orange-600"
-          disabled={isPending}
-        >
-          {isPending ? "Creating..." : "Create Table"}
-        </Button>
-      </form>
-    </DialogContent>
+      )}
+      
+      <Button 
+        type="submit" 
+        className="w-full bg-orange-500 hover:bg-orange-600"
+        disabled={isPending}
+      >
+        {isPending ? (tableData ? "Updating..." : "Creating...") : (tableData ? "Update Table" : "Create Table")}
+      </Button>
+    </form>
   );
 };
 
 const AdminTables = () => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedTable, setSelectedTable] = useState<TableType | null>(null);
   const queryClient = useQueryClient();
+  const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
 
   const { 
     data: tables = [], 
@@ -115,40 +140,25 @@ const AdminTables = () => {
     }
   });
 
-  const { mutate: regenerateQR, isPending: isRegenerating } = useMutation({
-    mutationFn: async (tableId: string) => {
-      return tablesAPI.regenerateQRCode(tableId);
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        toast.success("QR code regenerated successfully");
-        queryClient.invalidateQueries({ queryKey: ['tables'] });
-      } else {
-        toast.error(data.message || "Failed to regenerate QR code");
-      }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to regenerate QR code");
-    }
-  });
-
-  const handleGenerateQR = (tableId: string) => {
-    regenerateQR(tableId);
+  const handleEdit = (table: TableType) => {
+    setSelectedTable(table);
+    setIsEditDialogOpen(true);
   };
   
-  const handleDownloadQR = (qrCode: string, tableNumber: number) => {
-    // Create a temporary link to download the QR code
-    const link = document.createElement('a');
-    
-    // Check if the QR code URL is relative or absolute
-    const qrCodeUrl = qrCode.startsWith('http') ? qrCode : `${window.location.origin}${qrCode}`;
-    
-    link.href = qrCodeUrl;
-    link.download = `table-${tableNumber}-qr.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`QR code for Table #${tableNumber} downloaded`);
+  const handleDownloadQR = (tableId: string, tableNumber: number) => {
+    const qrCanvas = document.getElementById(`qr-code-${tableId}`);
+    if (qrCanvas) {
+      const canvas = qrCanvas.querySelector('canvas');
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = `table-${tableNumber}-qr.png`;
+        link.href = canvas.toDataURL('image/png');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`QR code for Table #${tableNumber} downloaded`);
+      }
+    }
   };
   
   if (error) {
@@ -170,16 +180,39 @@ const AdminTables = () => {
   return (
     <AdminLayout title="Tables & QR Codes">
       <div className="mb-6 flex justify-end">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-orange-500 hover:bg-orange-600">
               <Plus className="mr-1 h-4 w-4" />
               Add New Table
             </Button>
           </DialogTrigger>
-          <AddTableDialog onSuccess={() => setIsOpen(false)} />
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Table</DialogTitle>
+            </DialogHeader>
+            <TableForm onSuccess={() => setIsAddDialogOpen(false)} />
+          </DialogContent>
         </Dialog>
       </div>
+      
+      {/* Edit Table Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Table</DialogTitle>
+          </DialogHeader>
+          {selectedTable && (
+            <TableForm 
+              tableData={selectedTable} 
+              onSuccess={() => {
+                setIsEditDialogOpen(false);
+                setSelectedTable(null);
+              }} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
@@ -191,16 +224,12 @@ const AdminTables = () => {
             {tables.map((table) => (
               <div key={table.id} className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in">
                 <div className="p-6 flex items-center justify-center border-b">
-                  <div className="bg-gray-100 p-6 rounded-lg">
-                    {table.qrCode ? (
-                      <img 
-                        src={table.qrCode} 
-                        alt={`QR Code for Table ${table.number}`}
-                        className="h-24 w-24"
-                      />
-                    ) : (
-                      <QrCode className="h-24 w-24 text-gray-800" />
-                    )}
+                  <div id={`qr-code-${table.id}`} className="bg-gray-100 p-6 rounded-lg">
+                    <QRCodeSVG 
+                      value={`${frontendUrl}/table/${table.id}`}
+                      size={128}
+                      level="H"
+                    />
                   </div>
                 </div>
                 
@@ -213,22 +242,20 @@ const AdminTables = () => {
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleGenerateQR(table.id)}
-                      disabled={isRegenerating}
+                      onClick={() => handleEdit(table)}
                     >
-                      <QrCode className="mr-1 h-4 w-4" />
-                      Regenerate
+                      <Pencil className="mr-1 h-4 w-4" />
+                      Edit
                     </Button>
                     
                     <Button
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleDownloadQR(table.qrCode, table.number)}
-                      disabled={!table.qrCode}
+                      onClick={() => handleDownloadQR(table.id, table.number)}
                     >
                       <Download className="mr-1 h-4 w-4" />
-                      Download
+                      Download QR
                     </Button>
                   </div>
                 </div>
@@ -263,7 +290,12 @@ const AdminTables = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEdit(table)}
+                          >
+                            <Edit className="mr-1 h-4 w-4" />
                             Edit
                           </Button>
                         </TableCell>

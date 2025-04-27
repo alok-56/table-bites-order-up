@@ -15,10 +15,10 @@ import {
 import { MenuItem, Category } from "@/lib/types";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Edit } from "lucide-react";
 import { menuAPI } from "@/lib/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { 
   Form, 
   FormControl, 
@@ -36,44 +36,64 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-const AddMenuItemForm = ({ onSuccess, categories }: { onSuccess: () => void, categories: Category[] }) => {
+const MenuItemForm = ({ 
+  onSuccess, 
+  categories, 
+  menuItem = null 
+}: { 
+  onSuccess: () => void, 
+  categories: Category[], 
+  menuItem?: MenuItem | null 
+}) => {
   const form = useForm({
     defaultValues: {
-      name: '',
-      description: '',
-      price: '',
-      category: '',
-      image: 'https://images.unsplash.com/photo-1546241072-48010ad2862c',
-      available: true
+      name: menuItem?.name || '',
+      description: menuItem?.description || '',
+      price: menuItem?.price ? String(menuItem.price) : '',
+      category: menuItem?.category || '',
+      image: menuItem?.image || 'https://images.unsplash.com/photo-1546241072-48010ad2862c',
+      available: menuItem?.available !== undefined ? menuItem.available : true
     }
   });
 
   const queryClient = useQueryClient();
   
-  const { mutate: createMenuItem, isPending } = useMutation({
+  const { mutate: saveMenuItem, isPending } = useMutation({
     mutationFn: async (data: any) => {
-      return menuAPI.createMenuItem({
+      const formattedData = {
         ...data,
         price: parseFloat(data.price)
-      });
+      };
+      
+      if (menuItem) {
+        return menuAPI.updateMenuItem(menuItem.id, formattedData);
+      } else {
+        return menuAPI.createMenuItem(formattedData);
+      }
     },
     onSuccess: (response) => {
       if (response.success) {
-        toast.success("Menu item created successfully");
+        toast.success(menuItem ? "Menu item updated successfully" : "Menu item created successfully");
         queryClient.invalidateQueries({ queryKey: ['menuItems'] });
         form.reset();
         onSuccess();
       } else {
-        toast.error(response.message || "Failed to create menu item");
+        toast.error(response.message || "Failed to save menu item");
       }
     },
     onError: (error: any) => {
-      toast.error(error.message || "Failed to create menu item");
+      toast.error(error.message || "Failed to save menu item");
     }
   });
 
   const onSubmit = (data: any) => {
-    createMenuItem(data);
+    // Validate that a category is selected
+    if (!data.category) {
+      toast.error("Please select a category");
+      return;
+    }
+    
+    saveMenuItem(data);
   };
 
   return (
@@ -130,7 +150,11 @@ const AddMenuItemForm = ({ onSuccess, categories }: { onSuccess: () => void, cat
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a category" />
@@ -186,7 +210,7 @@ const AddMenuItemForm = ({ onSuccess, categories }: { onSuccess: () => void, cat
           className="w-full bg-orange-500 hover:bg-orange-600"
           disabled={isPending}
         >
-          {isPending ? "Creating..." : "Create Menu Item"}
+          {isPending ? (menuItem ? "Updating..." : "Creating...") : (menuItem ? "Update Menu Item" : "Create Menu Item")}
         </Button>
       </form>
     </Form>
@@ -253,7 +277,8 @@ const AddCategoryDialog = ({ onSuccess }: { onSuccess: () => void }) => {
 
 const AdminMenu = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [dialogType, setDialogType] = useState<"item" | "category" | null>(null);
+  const [dialogType, setDialogType] = useState<"item" | "category" | "editItem" | null>(null);
+  const [selectedMenuItem, setSelectedMenuItem] = useState<MenuItem | null>(null);
   
   const queryClient = useQueryClient();
   
@@ -320,6 +345,11 @@ const AdminMenu = () => {
     });
   };
   
+  const handleEditMenuItem = (item: MenuItem) => {
+    setSelectedMenuItem(item);
+    setDialogType("editItem");
+  };
+  
   const filteredItems = menuItems.filter((item) =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -333,6 +363,7 @@ const AdminMenu = () => {
 
   const closeDialog = () => {
     setDialogType(null);
+    setSelectedMenuItem(null);
   };
   
   const isLoading = itemsLoading || categoriesLoading;
@@ -397,11 +428,27 @@ const AdminMenu = () => {
               <DialogHeader>
                 <DialogTitle>Add New Menu Item</DialogTitle>
               </DialogHeader>
-              <AddMenuItemForm onSuccess={closeDialog} categories={categories} />
+              <MenuItemForm onSuccess={closeDialog} categories={categories} />
             </DialogContent>
           </Dialog>
         </div>
       </div>
+      
+      {/* Edit Menu Item Dialog */}
+      <Dialog open={dialogType === "editItem"} onOpenChange={(open) => open ? setDialogType("editItem") : closeDialog()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Menu Item</DialogTitle>
+          </DialogHeader>
+          {selectedMenuItem && (
+            <MenuItemForm 
+              onSuccess={closeDialog} 
+              categories={categories} 
+              menuItem={selectedMenuItem} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       
       {isLoading ? (
         <div className="flex items-center justify-center h-64">
@@ -449,7 +496,12 @@ const AdminMenu = () => {
                       />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditMenuItem(item)}
+                      >
+                        <Edit className="mr-1 h-4 w-4" />
                         Edit
                       </Button>
                     </TableCell>

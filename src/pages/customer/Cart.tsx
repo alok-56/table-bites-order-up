@@ -1,23 +1,59 @@
 
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCart } from "@/contexts/CartContext";
-import { ShoppingCart, ChevronLeft, Plus, Minus, Check } from "lucide-react";
+import { ordersAPI } from "@/lib/api";
+import { ShoppingCart, ChevronLeft, Plus, Minus } from "lucide-react";
+import { toast } from "sonner";
 
 const Cart = () => {
   const { tableId } = useParams<{ tableId: string }>();
-  const { items, updateQuantity, removeItem, getTotal } = useCart();
+  const { items, updateQuantity, removeItem, getTotal, clearCart } = useCart();
   const [notes, setNotes] = useState("");
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const { mutate: submitOrder } = useMutation({
+    mutationFn: async () => {
+      if (!tableId) {
+        throw new Error("Table ID is missing");
+      }
+      
+      const orderData = {
+        tableId,
+        items: items.map(item => ({
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          specialInstructions: ""
+        })),
+        notes
+      };
+      
+      return ordersAPI.createOrder(orderData);
+    },
+    onSuccess: (response) => {
+      if (response.success) {
+        toast.success("Order placed successfully!");
+        clearCart();
+        navigate(`/table/${tableId}/confirmation`);
+      } else {
+        toast.error(response.message || "Failed to place order");
+      }
+      setIsSubmitting(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Failed to place order");
+      setIsSubmitting(false);
+    }
+  });
   
   const handlePlaceOrder = () => {
-    // In a real app, we would send the order to the backend
-    // For now, just navigate to the confirmation page
-    navigate(`/table/${tableId}/confirmation`);
+    setIsSubmitting(true);
+    submitOrder();
   };
   
   if (items.length === 0) {
@@ -126,9 +162,9 @@ const Cart = () => {
             className="w-full mt-6 bg-orange-500 hover:bg-orange-600"
             size="lg"
             onClick={handlePlaceOrder}
+            disabled={isSubmitting}
           >
-            <Check className="mr-2 h-5 w-5" />
-            Place Order
+            {isSubmitting ? "Placing Order..." : "Place Order"}
           </Button>
         </div>
       </div>
