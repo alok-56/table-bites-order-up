@@ -1,3 +1,4 @@
+
 const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
@@ -13,7 +14,11 @@ const generateQRCode = async (tableId, tableNumber) => {
   }
   
   const qrPath = path.join(qrDirectory, `table_${tableNumber}.png`);
-  const qrUrl = `/table/${tableId}`;
+  
+  // Define the URL that will be encoded in the QR code
+  // This should be the full URL that customers will visit
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const qrUrl = `${frontendUrl}/table/${tableId}`;
   
   try {
     // Generate QR code
@@ -131,7 +136,7 @@ exports.deleteTable = async (req, res) => {
       }
     }
 
-    await table.remove();
+    await Table.findByIdAndDelete(req.params.id);
 
     res.status(200).json({ success: true, data: {} });
   } catch (error) {

@@ -8,9 +8,10 @@ interface OrderColumnProps {
   title: string;
   orders: Order[];
   variant: 'default' | 'orange' | 'blue' | 'green';
-  onUpdateStatus: (orderId: string, status: Order['status']) => void;
+  onUpdateStatus: (orderId: string) => void;
   nextStatus: Order['status'];
   buttonText: string;
+  isLoading?: boolean;
 }
 
 const OrderColumn = ({ 
@@ -19,7 +20,8 @@ const OrderColumn = ({
   variant, 
   onUpdateStatus, 
   nextStatus, 
-  buttonText 
+  buttonText,
+  isLoading = false
 }: OrderColumnProps) => {
   const getVariantStyles = () => {
     const styles = {
@@ -60,8 +62,12 @@ const OrderColumn = ({
         </div>
       </div>
       
-      <div className="p-2 space-y-2 min-h-[200px]">
-        {orders.length > 0 ? (
+      <div className="p-2 space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full py-10">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500"></div>
+          </div>
+        ) : orders.length > 0 ? (
           orders.map((order) => (
             <div key={order.id} className="bg-white border rounded p-3">
               <div className="flex justify-between items-center mb-2">
@@ -71,16 +77,22 @@ const OrderColumn = ({
                 </span>
               </div>
               
-              <div className="text-sm text-gray-600 mb-3">
+              <div className="text-sm text-gray-600 mb-3 max-h-36 overflow-y-auto">
                 {order.items.map((item) => (
-                  <div key={item.menuItemId}>
-                    {item.quantity}x {item.name}
+                  <div key={item.menuItemId} className="flex justify-between mb-1">
+                    <span>{item.quantity}x {item.name}</span>
+                    <span className="text-gray-500">${(item.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
+                {order.notes && (
+                  <div className="mt-2 pt-2 border-t text-xs italic text-gray-500">
+                    Note: {order.notes}
+                  </div>
+                )}
               </div>
               
               <Button
-                onClick={() => onUpdateStatus(order.id, nextStatus)}
+                onClick={() => onUpdateStatus(order.id)}
                 className={`w-full ${styles.button}`}
                 size="sm"
                 variant={variant === 'blue' ? 'outline' : 'default'}
@@ -91,8 +103,8 @@ const OrderColumn = ({
             </div>
           ))
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 italic">
-            No {title.toLowerCase()}
+          <div className="flex items-center justify-center h-full py-10 text-gray-500 italic">
+            No {title.toLowerCase()} orders
           </div>
         )}
       </div>

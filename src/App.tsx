@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./contexts/CartContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import AdminLogin from "./pages/auth/AdminLogin";
 import KitchenLogin from "./pages/auth/KitchenLogin";
@@ -18,7 +19,14 @@ import OrderConfirmation from "./pages/customer/OrderConfirmation";
 import Kitchen from "./pages/kitchen/Kitchen";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000,
+    },
+  },
+});
 
 const App = () => {
   return (
@@ -39,14 +47,34 @@ const App = () => {
               <Route path="/table/:tableId/cart" element={<Cart />} />
               <Route path="/table/:tableId/confirmation" element={<OrderConfirmation />} />
               
-              {/* Protected routes - these should check for auth */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/menu" element={<AdminMenu />} />
-              <Route path="/admin/tables" element={<AdminTables />} />
-              <Route path="/admin/orders" element={<AdminOrders />} />
+              {/* Protected Admin routes */}
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/menu" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminMenu />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/tables" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminTables />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/orders" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminOrders />
+                </ProtectedRoute>
+              } />
               
-              {/* Kitchen route */}
-              <Route path="/kitchen" element={<Kitchen />} />
+              {/* Protected Kitchen route */}
+              <Route path="/kitchen" element={
+                <ProtectedRoute allowedRoles={['kitchen', 'admin']}>
+                  <Kitchen />
+                </ProtectedRoute>
+              } />
               
               {/* Catch-all route */}
               <Route path="*" element={<NotFound />} />

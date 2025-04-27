@@ -1,63 +1,83 @@
 
-import { Navigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { authAPI } from '@/lib/api';
-import { toast } from 'sonner';
+import { useEffect, useState } from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { authAPI } from "@/lib/api";
+import { toast } from "sonner";
 
-type Props = {
+interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRole: 'admin' | 'kitchen';
-};
+  allowedRoles: string[];
+}
 
-const ProtectedRoute = ({ children, allowedRole }: Props) => {
-  const [isLoading, setIsLoading] = useState(true);
+const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
+  const [isChecking, setIsChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    const validateAuth = async () => {
-      const token = localStorage.getItem('token');
-      const userRole = localStorage.getItem('userRole');
-
-      if (!token || userRole !== allowedRole) {
-        setIsAuthenticated(false);
-        setIsLoading(false);
+    const checkAuth = async () => {
+      // Check if token exists
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        setIsChecking(false);
         return;
       }
-
+      
       try {
+        // Verify token by getting current user
         const response = await authAPI.getCurrentUser();
+        
         if (response.success && response.data) {
-          setIsAuthenticated(true);
+          const userRole = response.data.role;
+          
+          // Check if user has required role
+          if (allowedRoles.includes(userRole)) {
+            setIsAuthenticated(true);
+          } else {
+            toast.error("You don't have permission to access this page");
+            localStorage.removeItem("token");
+            localStorage.removeItem("userRole");
+          }
         } else {
-          toast.error('Session expired. Please login again.');
-          localStorage.removeItem('token');
-          localStorage.removeItem('userRole');
-          setIsAuthenticated(false);
+          // Token invalid or expired
+          localStorage.removeItem("token");
+          localStorage.removeItem("userRole");
         }
       } catch (error) {
-        console.error('Auth validation error:', error);
-        setIsAuthenticated(false);
+        console.error("Auth check failed:", error);
+        localStorage.removeItem("token");
+        localStorage.removeItem("userRole");
+      } finally {
+        setIsChecking(false);
       }
-      
-      setIsLoading(false);
     };
-
-    validateAuth();
-  }, [allowedRole]);
-
-  if (isLoading) {
+    
+    checkAuth();
+  }, [allowedRoles]);
+  
+  if (isChecking) {
+    // Show loading state while checking authentication
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
       </div>
     );
   }
-
+  
+  // If not authenticated, redirect to login
   if (!isAuthenticated) {
-    return <Navigate to={`/${allowedRole}/login`} state={{ from: location }} replace />;
+    // Determine which login page to redirect to
+    let redirectPath = "/admin/login";
+    
+    if (allowedRoles.includes("kitchen") && !allowedRoles.includes("admin")) {
+      redirectPath = "/kitchen/login";
+    }
+    
+    return <Navigate to={redirectPath} state={{ from: location }} replace />;
   }
-
+  
+  // If authenticated and has correct role, render children
   return <>{children}</>;
 };
 

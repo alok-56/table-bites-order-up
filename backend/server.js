@@ -14,29 +14,20 @@ const orderRoutes = require("./routes/orders");
 
 // Initialize express app
 const app = express();
-const PORT = process.env.PORT || 6000;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files for QR codes
-app.use('/qrcodes', express.static(path.join(__dirname, 'qrcodes')));
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/tables', tableRoutes);
-app.use('/api/menu', menuRoutes);
-app.use('/api/orders', orderRoutes);
-
-// Create uploads directory for QR codes if it doesn't exist
+// Create directory for QR codes if it doesn't exist
 const qrDirectory = path.join(__dirname, 'qrcodes');
 if (!fs.existsSync(qrDirectory)) {
   fs.mkdirSync(qrDirectory, { recursive: true });
 }
 
-// Static files for QR codes
+// Serve static files for QR codes
 app.use('/qrcodes', express.static(path.join(__dirname, 'qrcodes')));
 
 // API Routes

@@ -1,3 +1,4 @@
+
 const MenuItem = require('../models/MenuItem');
 const Category = require('../models/Category');
 
@@ -53,7 +54,7 @@ exports.deleteCategory = async (req, res) => {
       });
     }
     
-    await category.remove();
+    await Category.findByIdAndDelete(req.params.id);
     
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
@@ -154,7 +155,7 @@ exports.deleteMenuItem = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Menu item not found' });
     }
     
-    await menuItem.remove();
+    await MenuItem.findByIdAndDelete(req.params.id);
     
     res.status(200).json({ success: true, data: {} });
   } catch (error) {
