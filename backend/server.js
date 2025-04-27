@@ -1,19 +1,20 @@
 
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const path = require('path');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const path = require("path");
+const fs = require("fs");
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const tableRoutes = require('./routes/tables');
-const menuRoutes = require('./routes/menu');
-const orderRoutes = require('./routes/orders');
+// Routes
+const authRoutes = require("./routes/auth");
+const tableRoutes = require("./routes/tables");
+const menuRoutes = require("./routes/menu");
+const orderRoutes = require("./routes/orders");
 
 // Initialize express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 6000;
 
 // Middleware
 app.use(cors());
@@ -29,8 +30,29 @@ app.use('/api/tables', tableRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 
+// Create uploads directory for QR codes if it doesn't exist
+const qrDirectory = path.join(__dirname, 'qrcodes');
+if (!fs.existsSync(qrDirectory)) {
+  fs.mkdirSync(qrDirectory, { recursive: true });
+}
+
+// Static files for QR codes
+app.use('/qrcodes', express.static(path.join(__dirname, 'qrcodes')));
+
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/tables", tableRoutes);
+app.use("/api/menu", menuRoutes);
+app.use("/api/orders", orderRoutes);
+
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "Server is running" });
+});
+
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI )
+mongoose
+  .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
     // Start the server
