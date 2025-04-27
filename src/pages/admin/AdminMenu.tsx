@@ -390,7 +390,8 @@ const AdminMenu = () => {
 
   // Get category name from category ID
   const getCategoryName = (categoryId: string) => {
-    const category = categories.find((c) => c.id === categoryId);
+    const category = categories.find((c) => c._id === categoryId);
+    console.log(category)
     return category ? category.name : "Uncategorized";
   };
 
@@ -536,7 +537,7 @@ const AdminMenu = () => {
                         {item.name}
                       </div>
                     </TableCell>
-                    <TableCell>{getCategoryName(item.category)}</TableCell>
+                    <TableCell>{getCategoryName(item.category._id)}</TableCell>
                     <TableCell className="hidden md:table-cell max-w-xs truncate">
                       {item.description}
                     </TableCell>

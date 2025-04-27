@@ -27,18 +27,18 @@ api.interceptors.request.use(
 // Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
-    // Convert axios response to our ApiResponse format
-    return {
+    const apiResponse: ApiResponse<any> = {
       success: true,
       data: response.data.data || response.data
-    } as ApiResponse<any>;
+    };
+    return apiResponse;
   },
   (error) => {
-    const message = error.response?.data?.message || error.message || 'An error occurred';
-    return {
+    const apiResponse: ApiResponse<any> = {
       success: false,
-      message
-    } as ApiResponse<any>;
+      message: error.response?.data?.message || error.message || 'An error occurred'
+    };
+    return apiResponse;
   }
 );
 

@@ -130,7 +130,7 @@ const AdminOrders = () => {
                 orders.map((order) => (
                   <>
                     <TableRow key={order.id} className="cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                      <TableCell className="font-medium">{order.id.slice(-6)}</TableCell>
+                      <TableCell className="font-medium">{order._id.slice(-6)}</TableCell>
                       <TableCell>#{order.tableNumber}</TableCell>
                       <TableCell>
                         {order.items.length} {order.items.length === 1 ? 'item' : 'items'}

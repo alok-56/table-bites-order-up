@@ -16,6 +16,8 @@ const Cart = () => {
   const [notes, setNotes] = useState("");
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  console.log(items)
   
   const { mutate: submitOrder } = useMutation({
     mutationFn: async () => {
@@ -96,6 +98,7 @@ const Cart = () => {
           
           <div className="space-y-4">
             {items.map((item) => (
+              
               <div key={item.menuItemId} className="flex justify-between items-center border-b pb-4">
                 <div className="flex-1">
                   <h3 className="font-medium">{item.name}</h3>

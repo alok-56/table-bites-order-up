@@ -53,6 +53,7 @@ const Kitchen = () => {
   // Update order status mutation
   const { mutate: updateOrderStatus } = useMutation({
     mutationFn: async ({ orderId, status }: { orderId: string, status: Order['status'] }) => {
+      console.log(orderId)
       return ordersAPI.updateOrder(orderId, status);
     },
     onSuccess: (data, variables) => {
