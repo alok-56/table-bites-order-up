@@ -23,21 +23,21 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor for error handling
+// Fix response interceptor to handle types properly
 api.interceptors.response.use(
   (response: AxiosResponse<any>) => {
-    const apiResponse: ApiResponse<any> = {
+    // Convert to our API response format
+    return {
       success: true,
       data: response.data.data || response.data
-    };
-    return apiResponse;
+    } as ApiResponse<any>;
   },
   (error) => {
-    const apiResponse: ApiResponse<any> = {
+    // Handle errors and convert to our API response format
+    return {
       success: false,
       message: error.response?.data?.message || error.message || 'An error occurred'
-    };
-    return apiResponse;
+    } as ApiResponse<any>;
   }
 );
 
@@ -46,7 +46,7 @@ export const authAPI = {
   login: async (email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      return response as ApiResponse<{ token: string; user: User }>;
+      return response as unknown as ApiResponse<{ token: string; user: User }>;
     } catch (error) {
       return { success: false, message: 'Login failed' };
     }

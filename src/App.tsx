@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminMenu from "./pages/admin/AdminMenu";
 import AdminTables from "./pages/admin/AdminTables";
 import AdminOrders from "./pages/admin/AdminOrders";
+import CustomerHome from "./pages/customer/CustomerHome";
 import CustomerMenu from "./pages/customer/CustomerMenu";
 import Cart from "./pages/customer/Cart";
 import OrderConfirmation from "./pages/customer/OrderConfirmation";
@@ -43,6 +44,7 @@ const App = () => {
               <Route path="/kitchen/login" element={<KitchenLogin />} />
               
               {/* Customer routes */}
+              <Route path="/table/:tableId/home" element={<CustomerHome />} />
               <Route path="/table/:tableId" element={<CustomerMenu />} />
               <Route path="/table/:tableId/cart" element={<Cart />} />
               <Route path="/table/:tableId/confirmation" element={<OrderConfirmation />} />

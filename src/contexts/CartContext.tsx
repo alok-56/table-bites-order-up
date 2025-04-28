@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { CartItem } from "@/lib/types";
+import { CartItem, MenuItem } from "@/lib/types";
 import { toast } from "sonner";
 
 interface CartContextType {
@@ -13,6 +13,9 @@ interface CartContextType {
   setTableId: (id: string | null) => void;
   getTotal: () => number;
   getItemCount: () => number;
+  // Add these functions
+  addToCart: (item: MenuItem) => void;
+  isItemInCart: (menuItemId: string) => boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -79,6 +82,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return items.reduce((count, item) => count + item.quantity, 0);
   };
 
+  // Add new function to check if an item is in the cart
+  const isItemInCart = (menuItemId: string): boolean => {
+    return items.some((item) => item.menuItemId === menuItemId);
+  };
+
+  // Add new function to directly add menu items to cart
+  const addToCart = (menuItem: MenuItem) => {
+    const newCartItem = {
+      menuItemId: menuItem._id,
+      name: menuItem.name,
+      price: menuItem.price
+    };
+    addItem(newCartItem);
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -91,6 +109,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setTableId,
         getTotal,
         getItemCount,
+        // Add new functions to the context value
+        addToCart,
+        isItemInCart
       }}
     >
       {children}

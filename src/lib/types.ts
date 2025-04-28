@@ -2,17 +2,19 @@
 // Data models for the application
 
 export interface MenuItem {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
   description: string;
   price: number;
   image: string;
-  category: string;
+  category: Category;
   available: boolean;
 }
 
 export interface Category {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
 }
 
@@ -25,7 +27,8 @@ export interface CartItem {
 }
 
 export interface Table {
-  id: string;
+  _id: string;
+  id?: string;
   number: number;
   seats: number;
   qrCode: string;
@@ -33,7 +36,8 @@ export interface Table {
 }
 
 export interface Order {
-  id: string;
+  _id: string;
+  id?: string;
   tableId: string;
   tableNumber: number;
   items: CartItem[];
