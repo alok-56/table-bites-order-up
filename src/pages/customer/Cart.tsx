@@ -17,7 +17,6 @@ const Cart = () => {
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  console.log(items)
   
   const { mutate: submitOrder } = useMutation({
     mutationFn: async () => {

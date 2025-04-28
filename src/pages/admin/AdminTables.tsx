@@ -307,7 +307,7 @@ const AdminTables = () => {
                     className="bg-gray-100 p-6 rounded-lg"
                   >
                     <QRCodeSVG
-                      value={`${frontendUrl}/table/${table._id}`}
+                      value={`${frontendUrl}/table/${table._id}/home`}
                       size={128}
                       level="H"
                       ref={(el) => {

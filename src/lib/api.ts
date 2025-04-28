@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import { ApiResponse, Category, MenuItem, Order, Table, User } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://final-year-backend-sooty.vercel.app/api';
 
 // Create axios instance
 const api = axios.create({
