@@ -23,7 +23,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Fix response interceptor to handle types properly
+// Fix response interceptor 
 api.interceptors.response.use(
   (response: AxiosResponse<any>) => {
     // Convert to our API response format
