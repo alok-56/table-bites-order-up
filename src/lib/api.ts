@@ -1,5 +1,4 @@
-
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { ApiResponse, Category, MenuItem, Order, Table, User } from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
@@ -26,7 +25,7 @@ api.interceptors.request.use(
 
 // Add response interceptor for error handling
 api.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse<any>) => {
     const apiResponse: ApiResponse<any> = {
       success: true,
       data: response.data.data || response.data
@@ -86,7 +85,8 @@ export const tablesAPI = {
   },
   
   updateTable: async (id: string, tableData: Partial<Table>): Promise<ApiResponse<Table>> => {
-    return api.put(`/tables/${id}`, tableData);
+    const payload = { ...tableData };
+    return api.put(`/tables/${id}`, payload);
   },
   
   deleteTable: async (id: string): Promise<ApiResponse<{}>> => {

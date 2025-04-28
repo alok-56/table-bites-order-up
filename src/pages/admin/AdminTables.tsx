@@ -1,3 +1,4 @@
+
 import { useRef, useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ const TableForm = ({
     mutationFn: async (data: {
       number: number;
       seats: number;
-      status?: string;
+      status: "available" | "occupied";
     }) => {
       if (tableData) {
         return tablesAPI.updateTable(tableData._id, data);
@@ -83,7 +84,7 @@ const TableForm = ({
     saveTable({
       number: parseInt(data.number),
       seats: parseInt(data.seats),
-      status: data.status,
+      status: data.status as "available" | "occupied",
     });
   };
 
@@ -148,6 +149,7 @@ const AdminTables = () => {
   const queryClient = useQueryClient();
   const frontendUrl =
     import.meta.env.VITE_FRONTEND_URL || window.location.origin;
+  const qrCodeRefs = useRef<Record<string, any>>({});
 
   const {
     data: tables = [],
@@ -170,30 +172,65 @@ const AdminTables = () => {
     setIsEditDialogOpen(true);
   };
 
-  const qrCodeRefs = useRef<any>({}); // Ref to hold references to all QRCodeSVG elements
-
-  const handleDownloadQR = async (tableId: string, tableNumber: number) => {
+  const handleDownloadQR = (tableId: string, tableNumber: number) => {
     try {
-      // Access the QR code reference
-      const qrCodeElement = qrCodeRefs.current[tableId];
-      if (!qrCodeElement) {
-        toast.error("QR code not found.");
+      // Create a canvas element
+      const canvas = document.createElement("canvas");
+      const qrSvg = qrCodeRefs.current[tableId];
+      
+      if (!qrSvg) {
+        toast.error("QR code not found");
         return;
       }
-
-      // Generate the Data URL from the ref element
-      const qrCodeDataUrl = qrCodeElement.toDataURL();
-
-      // Create an anchor element to trigger the download
-      const link = document.createElement("a");
-      link.download = `table-${tableNumber}-qr.png`; // Set the download filename
-      link.href = qrCodeDataUrl; // Use the generated Data URL as the href
-      document.body.appendChild(link);
-      link.click(); // Simulate a click to download the file
-      document.body.removeChild(link); // Clean up the DOM
-      toast.success(`QR code for Table #${tableNumber} downloaded`);
+      
+      // Get the SVG data
+      const svgData = new XMLSerializer().serializeToString(qrSvg);
+      
+      // Create a Blob from the SVG data
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      
+      // Create an image from the SVG
+      const img = new Image();
+      img.onload = () => {
+        // Set canvas dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw image to canvas
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          
+          // Convert canvas to blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              // Create download link
+              const downloadUrl = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = downloadUrl;
+              link.download = `table-${tableNumber}-qr.png`;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              
+              // Clean up
+              URL.revokeObjectURL(downloadUrl);
+              toast.success(`QR code for Table #${tableNumber} downloaded`);
+            } else {
+              toast.error("Failed to generate QR code image");
+            }
+          }, "image/png");
+        }
+        URL.revokeObjectURL(url);
+      };
+      
+      img.src = url;
     } catch (error) {
-      toast.error("Failed to generate or download QR code.");
+      console.error("Error downloading QR code:", error);
+      toast.error("Failed to download QR code");
     }
   };
 
@@ -204,12 +241,12 @@ const AdminTables = () => {
           <p className="text-red-500">
             Error loading tables. Please try again.
           </p>
-          <button
+          <Button
             onClick={() => refetch()}
-            className="mt-4 px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+            className="mt-4 bg-orange-500 hover:bg-orange-600"
           >
             Retry
-          </button>
+          </Button>
         </div>
       </AdminLayout>
     );
@@ -261,12 +298,12 @@ const AdminTables = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {tables.map((table) => (
               <div
-                key={table.id}
-                className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in"
+                key={table._id}
+                className="bg-white rounded-lg border shadow-sm overflow-hidden animate-fade-in transition-all duration-300 hover:shadow-md"
               >
                 <div className="p-6 flex items-center justify-center border-b">
                   <div
-                    id={`qr-code-${table.id}`}
+                    id={`qr-code-${table._id}`}
                     className="bg-gray-100 p-6 rounded-lg"
                   >
                     <QRCodeSVG
@@ -274,7 +311,9 @@ const AdminTables = () => {
                       size={128}
                       level="H"
                       ref={(el) => {
-                        qrCodeRefs.current[table.id] = el;
+                        if (el) {
+                          qrCodeRefs.current[table._id] = el;
+                        }
                       }}
                     />
                   </div>
@@ -292,7 +331,7 @@ const AdminTables = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 hover:bg-gray-50 transition-colors"
                       onClick={() => handleEdit(table)}
                     >
                       <Pencil className="mr-1 h-4 w-4" />
@@ -302,7 +341,7 @@ const AdminTables = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 hover:bg-gray-50 transition-colors"
                       onClick={() => handleDownloadQR(table._id, table.number)}
                     >
                       <Download className="mr-1 h-4 w-4" />
@@ -314,7 +353,7 @@ const AdminTables = () => {
             ))}
           </div>
 
-          <div className="bg-white rounded-lg border shadow-sm p-6">
+          <div className="bg-white rounded-lg border shadow-sm p-6 animate-fade-in">
             <h3 className="font-semibold text-lg mb-4">Table List</h3>
 
             <div className="rounded-md border">
@@ -330,7 +369,7 @@ const AdminTables = () => {
                 <TableBody>
                   {tables.length > 0 ? (
                     tables.map((table) => (
-                      <TableRow key={table.id}>
+                      <TableRow key={table._id}>
                         <TableCell className="font-medium">
                           #{table.number}
                         </TableCell>
